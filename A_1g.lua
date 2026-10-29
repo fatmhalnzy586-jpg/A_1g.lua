@@ -1,7 +1,6 @@
 -- ==========================================================
 -- Developer: A_1g
--- Map: BQM Streets / BlockSpin (Universal Auto-Fish & Bypass)
--- Features: Auto Fish, Mini-game Bypass, Fly & Wall-Check Aimbot
+-- Map: Ultimate Hub with ESP, Auto-Fish, Bypass & Aimbot
 -- ==========================================================
 
 local CoreGui = game:GetService("CoreGui")
@@ -11,21 +10,19 @@ local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- إزالة الواجهة القديمة إن وجدت لمنع التكرار
-if CoreGui:FindFirstChild("A_1gHub") then
-    CoreGui.A_1gHub:Destroy()
+if CoreGui:FindFirstChild("A_1gHub_ESP") then
+    CoreGui.A_1gHub_ESP:Destroy()
 end
 
--- بناء واجهة مستخدم متوافقة مع منفذ دلتا
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "A_1gHub"
+ScreenGui.Name = "A_1gHub_ESP"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 320, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -160, 0.4, -210)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
+MainFrame.Size = UDim2.new(0, 320, 0, 460)
+MainFrame.Position = UDim2.new(0.5, -160, 0.4, -230)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -35,11 +32,10 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 12)
 UICorner.Parent = MainFrame
 
--- عنوان الواجهة
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 50)
-Title.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
-Title.Text = "⚡ A_1g Hub ⚡"
+Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+Title.Text = "⚡ A_1g Hub | مع ميزة ESP ⚡"
 Title.TextColor3 = Color3.fromRGB(255, 215, 0)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -49,7 +45,6 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 12)
 TitleCorner.Parent = Title
 
--- دالة إنشاء الأزرار
 local function createButton(text, posY, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.88, 0, 0, 40)
@@ -71,23 +66,49 @@ local function createButton(text, posY, callback)
     return btn
 end
 
--- متغيرات التحكم
 local autoFishing = false
 local aimbotEnabled = false
 local wallCheckEnabled = true
+local espEnabled = false
 local flying = false
 local flySpeed = 50
 
--- 1. زر الصيد التلقائي وتخطي اللعبة المصغرة
-createButton("الصيد التلقائي وتخطي الميني جيم: معطل ❌", 60, function(btn)
+-- تخزين رسومات الـ ESP
+local espBoxes = {}
+
+local function removeESP(player)
+    if espBoxes[player] then
+        for _, obj in pairs(espBoxes[player]) do
+            pcall(function() obj:Remove() end)
+        end
+        espBoxes[player] = nil
+    end
+end
+
+-- 1. زر الـ ESP (كشف اللاعبين)
+createButton("كشف اللاعبين (ESP): معطل ❌", 60, function(btn)
+    espEnabled = not espEnabled
+    if espEnabled then
+        btn.Text = "كشف اللاعبين (ESP): شغال ✅"
+        btn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
+    else
+        btn.Text = "كشف اللاعبين (ESP): معطل ❌"
+        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+        for _, player in pairs(Players:GetPlayers()) do
+            removeESP(player)
+        end
+    end
+end)
+
+-- 2. الصيد التلقائي
+createButton("الصيد التلقائي وتخطي الميني جيم: معطل ❌", 110, function(btn)
     autoFishing = not autoFishing
     if autoFishing then
         btn.Text = "الصيد التلقائي وتخطي الميني جيم: شغال ✅"
         btn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
-        
         task.spawn(function()
             while autoFishing do
-                task.wait(0.3)
+                task.wait(0.2)
                 pcall(function()
                     local char = LocalPlayer.Character
                     if char then
@@ -97,12 +118,13 @@ createButton("الصيد التلقائي وتخطي الميني جيم: معط
                         end
                     end
                     for _, gui in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-                        if gui:IsA("TextButton") and (string.match(gui.Name:lower(), "fish") or string.match(gui.Text:lower(), "catch") or string.match(gui.Text:lower(), "reel")) then
-                            local success = pcall(function()
-                                fireclickdetector(gui)
-                            end)
-                            if not success then
-                                gui.Visible = false
+                        if gui:IsA("Frame") or gui:IsA("ImageLabel") or gui:IsA("TextButton") then
+                            local name = gui.Name:lower()
+                            if name:match("minigame") or name:match("bar") or name:match("fish") or name:match("reel") or name:match("catch") then
+                                pcall(function()
+                                    gui.Visible = false
+                                    gui:Destroy()
+                                end)
                             end
                         end
                     end
@@ -115,20 +137,20 @@ createButton("الصيد التلقائي وتخطي الميني جيم: معط
     end
 end)
 
--- 2. زر الإيم بوت
-createButton("الإيم بوت: معطل ❌", 110, function(btn)
+-- 3. الإيم بوت
+createButton("الإيم بوت القوي: معطل ❌", 160, function(btn)
     aimbotEnabled = not aimbotEnabled
     if aimbotEnabled then
-        btn.Text = "الإيم بوت: شغال ✅"
+        btn.Text = "الإيم بوت القوي: شغال ✅"
         btn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
     else
-        btn.Text = "الإيم بوت: معطل ❌"
+        btn.Text = "الإيم بوت القوي: معطل ❌"
         btn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
     end
 end)
 
--- 3. زر فحص الجدران (ضد الشبك)
-createButton("فحص الجدران (ضد الشبك): شغال ✅", 160, function(btn)
+-- 4. فحص الجدران
+createButton("فحص الجدران (ضد الشبك): شغال ✅", 210, function(btn)
     wallCheckEnabled = not wallCheckEnabled
     if wallCheckEnabled then
         btn.Text = "فحص الجدران (ضد الشبك): شغال ✅"
@@ -139,8 +161,8 @@ createButton("فحص الجدران (ضد الشبك): شغال ✅", 160, funct
     end
 end)
 
--- 4. زر الطيران السلس
-createButton("الطيران السلس: معطل ❌", 210, function(btn)
+-- 5. الطيران
+createButton("الطيران السلس: معطل ❌", 260, function(btn)
     flying = not flying
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -170,19 +192,18 @@ createButton("الطيران السلس: معطل ❌", 210, function(btn)
     end
 end)
 
--- 5. زر نسخ السكربت للحافظة
-createButton("📋 نسخ السكربت بالكامل للحافظة", 260, function(btn)
+-- 6. نسخ السكربت
+createButton("📋 نسخ السكربت بالكامل للحافظة", 310, function(btn)
     if setclipboard then
-        setclipboard("loadstring(game:HttpGet('https://raw.githubusercontent.com/fatmhalnzy586-jpg/Qqgqqg.lua/main/Mlokezqazoqe.lua'))()")
+        setclipboard("loadstring(game:HttpGet('https://raw.githubusercontent.com/fatmhalnzy586-jpg/A_1g.lua/main/A_1g.lua'))()")
         btn.Text = "تم النسخ بنجاح! ✅"
         task.wait(1.5)
         btn.Text = "📋 نسخ السكربت بالكامل للحافظة"
     else
-        btn.Text = "منفذ دلتا لا يدعم النسخ التلقائي"
+        btn.Text = "المنفذ لا يدعم النسخ التلقائي"
     end
 end)
 
--- حقوق التطوير الجديدة
 local Credits = Instance.new("TextLabel")
 Credits.Size = UDim2.new(1, 0, 0, 30)
 Credits.Position = UDim2.new(0, 0, 1, -35)
@@ -193,7 +214,39 @@ Credits.TextSize = 13
 Credits.Font = Enum.Font.SourceSansItalic
 Credits.Parent = MainFrame
 
--- نظام فحص الجدران والرؤية للإيم بوت
+-- تحديث الـ ESP ورسم الأسماء فوق اللاعبين
+RunService.RenderStepped:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if espEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+                if not espBoxes[player] then
+                    local nameText = Drawing.new("Text")
+                    nameText.Visible = false
+                    nameText.Center = true
+                    nameText.Outline = true
+                    nameText.Color = Color3.fromRGB(255, 255, 255)
+                    nameText.Size = 14
+                    espBoxes[player] = {Text = nameText}
+                end
+                
+                local rootPart = player.Character.HumanoidRootPart
+                local vector, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+                
+                if onScreen then
+                    espBoxes[player].Text.Text = player.Name
+                    espBoxes[player].Text.Position = Vector2.new(vector.X, vector.Y - 20)
+                    espBoxes[player].Text.Visible = true
+                else
+                    espBoxes[player].Text.Visible = false
+                end
+            else
+                removeESP(player)
+            end
+        end
+    end
+end)
+
+-- نظام الإيم بوت وفحص الجدران
 local function isVisible(targetPart)
     if not wallCheckEnabled then return true end
     local origin = Camera.CFrame.Position
@@ -226,7 +279,7 @@ local function getClosestTarget()
                 if onScreen then
                     local mousePos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                     local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                    if dist < shortestDistance and dist <= 250 then
+                    if dist < shortestDistance and dist <= 500 then
                         if isVisible(head) then
                             closest = head
                             shortestDistance = dist
