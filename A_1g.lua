@@ -1,0 +1,249 @@
+-- ==========================================================
+-- Developer: A_1g
+-- Map: BQM Streets / BlockSpin (Universal Auto-Fish & Bypass)
+-- Features: Auto Fish, Mini-game Bypass, Fly & Wall-Check Aimbot
+-- ==========================================================
+
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- إزالة الواجهة القديمة إن وجدت لمنع التكرار
+if CoreGui:FindFirstChild("A_1gHub") then
+    CoreGui.A_1gHub:Destroy()
+end
+
+-- بناء واجهة مستخدم متوافقة مع منفذ دلتا
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "A_1gHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 320, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -160, 0.4, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+-- عنوان الواجهة
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+Title.Text = "⚡ A_1g Hub ⚡"
+Title.TextColor3 = Color3.fromRGB(255, 215, 0)
+Title.TextSize = 16
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = Title
+
+-- دالة إنشاء الأزرار
+local function createButton(text, posY, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.88, 0, 0, 40)
+    btn.Position = UDim2.new(0.06, 0, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.SourceSansSemibold
+    btn.TextSize = 14
+    btn.Parent = MainFrame
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 8)
+    btnCorner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        callback(btn)
+    end)
+    return btn
+end
+
+-- متغيرات التحكم
+local autoFishing = false
+local aimbotEnabled = false
+local wallCheckEnabled = true
+local flying = false
+local flySpeed = 50
+
+-- 1. زر الصيد التلقائي وتخطي اللعبة المصغرة
+createButton("الصيد التلقائي وتخطي الميني جيم: معطل ❌", 60, function(btn)
+    autoFishing = not autoFishing
+    if autoFishing then
+        btn.Text = "الصيد التلقائي وتخطي الميني جيم: شغال ✅"
+        btn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
+        
+        task.spawn(function()
+            while autoFishing do
+                task.wait(0.3)
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if char then
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        if tool then
+                            tool:Activate()
+                        end
+                    end
+                    for _, gui in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                        if gui:IsA("TextButton") and (string.match(gui.Name:lower(), "fish") or string.match(gui.Text:lower(), "catch") or string.match(gui.Text:lower(), "reel")) then
+                            local success = pcall(function()
+                                fireclickdetector(gui)
+                            end)
+                            if not success then
+                                gui.Visible = false
+                            end
+                        end
+                    end
+                end)
+            end
+        end)
+    else
+        btn.Text = "الصيد التلقائي وتخطي الميني جيم: معطل ❌"
+        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+    end
+end)
+
+-- 2. زر الإيم بوت
+createButton("الإيم بوت: معطل ❌", 110, function(btn)
+    aimbotEnabled = not aimbotEnabled
+    if aimbotEnabled then
+        btn.Text = "الإيم بوت: شغال ✅"
+        btn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
+    else
+        btn.Text = "الإيم بوت: معطل ❌"
+        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+    end
+end)
+
+-- 3. زر فحص الجدران (ضد الشبك)
+createButton("فحص الجدران (ضد الشبك): شغال ✅", 160, function(btn)
+    wallCheckEnabled = not wallCheckEnabled
+    if wallCheckEnabled then
+        btn.Text = "فحص الجدران (ضد الشبك): شغال ✅"
+        btn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
+    else
+        btn.Text = "فحص الجدران (ضد الشبك): معطل ❌"
+        btn.BackgroundColor3 = Color3.fromRGB(178, 34, 34)
+    end
+end)
+
+-- 4. زر الطيران السلس
+createButton("الطيران السلس: معطل ❌", 210, function(btn)
+    flying = not flying
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+
+    if flying then
+        btn.Text = "الطيران السلس: شغال ✅"
+        btn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "A_1gFlyEngine"
+        bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
+
+        task.spawn(function()
+            while flying and task.wait() do
+                bv.Velocity = Camera.CFrame.LookVector * flySpeed
+            end
+            bv:Destroy()
+        end)
+    else
+        btn.Text = "الطيران السلس: معطل ❌"
+        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+        if hrp:FindFirstChild("A_1gFlyEngine") then
+            hrp.A_1gFlyEngine:Destroy()
+        end
+    end
+end)
+
+-- 5. زر نسخ السكربت للحافظة
+createButton("📋 نسخ السكربت بالكامل للحافظة", 260, function(btn)
+    if setclipboard then
+        setclipboard("loadstring(game:HttpGet('https://raw.githubusercontent.com/fatmhalnzy586-jpg/Qqgqqg.lua/main/Mlokezqazoqe.lua'))()")
+        btn.Text = "تم النسخ بنجاح! ✅"
+        task.wait(1.5)
+        btn.Text = "📋 نسخ السكربت بالكامل للحافظة"
+    else
+        btn.Text = "منفذ دلتا لا يدعم النسخ التلقائي"
+    end
+end)
+
+-- حقوق التطوير الجديدة
+local Credits = Instance.new("TextLabel")
+Credits.Size = UDim2.new(1, 0, 0, 30)
+Credits.Position = UDim2.new(0, 0, 1, -35)
+Credits.BackgroundTransparency = 1
+Credits.Text = "صنع بكل فخر بواسطة: A_1g"
+Credits.TextColor3 = Color3.fromRGB(160, 160, 180)
+Credits.TextSize = 13
+Credits.Font = Enum.Font.SourceSansItalic
+Credits.Parent = MainFrame
+
+-- نظام فحص الجدران والرؤية للإيم بوت
+local function isVisible(targetPart)
+    if not wallCheckEnabled then return true end
+    local origin = Camera.CFrame.Position
+    local destination = targetPart.Position
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = RaycastFilterType.Exclude
+
+    local filterList = {Camera}
+    if LocalPlayer.Character then
+        table.insert(filterList, LocalPlayer.Character)
+    end
+    rayParams.FilterDescendantsInstances = filterList
+
+    local result = Workspace:Raycast(origin, destination - origin, rayParams)
+    if result and result.Instance then
+        return result.Instance:IsDescendantOf(targetPart.Parent)
+    end
+    return true
+end
+
+local function getClosestTarget()
+    local closest = nil
+    local shortestDistance = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local head = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+            if head then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local mousePos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    if dist < shortestDistance and dist <= 250 then
+                        if isVisible(head) then
+                            closest = head
+                            shortestDistance = dist
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled then
+        local target = getClosestTarget()
+        if target then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        end
+    end
+end)
